@@ -1,9 +1,12 @@
+import { useEffect, useState } from "react";
+import axios from "axios";
 import { Box, Typography } from "@mui/material";
 import { createStyles } from "@mui/styles";
-import dayjs from "dayjs";
-import { useEffect, useState } from "react";
 import { GiHamburgerMenu } from "react-icons/gi";
+import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
+
+dayjs.extend(duration);
 
 interface Props {
   handleShowSidebar: () => void;
@@ -11,27 +14,48 @@ interface Props {
 
 const Banner = (props: Props) => {
   const { handleShowSidebar } = props;
+  const [bannerImage, setBannerImage] = useState<string>("");
+  const [bannerDescription, setBannerDescription] = useState<string>("");
+  const [timer, setTimer] = useState<number>(0);
   const [timeLeft, setTimeLeft] = useState<number>(0);
+
   useEffect(() => {
-    const targetTime = dayjs().add(4, "hour").valueOf();
-
-    const updateTimer = () => {
-      const now = dayjs().valueOf();
-      const distance = targetTime - now;
-
-      if (distance < 0) {
-        setTimeLeft(0);
-        return;
+    const fetchData = async () => {
+      try {
+        const response = await axios.get(
+          "https://d435-2401-4900-5990-7076-80a7-ca26-430e-19c4.ngrok-free.app/api"
+        );
+        const { image, duration } = response.data;
+        setBannerImage(image);
+        setBannerDescription(duration);
+        setTimer(new Date(timer).getTime());
+      } catch (error) {
+        console.error("Error fetching banner data:", error);
       }
-
-      setTimeLeft(distance);
     };
 
-    updateTimer();
-    const timerInterval = setInterval(updateTimer, 1000);
-
-    return () => clearInterval(timerInterval);
+    fetchData();
   }, []);
+  useEffect(() => {
+    if (timer) {
+      const updateTimer = () => {
+        const now = dayjs().valueOf();
+        const distance = timer - now;
+
+        if (distance < 0) {
+          setTimeLeft(0);
+          return;
+        }
+
+        setTimeLeft(distance);
+      };
+
+      updateTimer();
+      const timerInterval = setInterval(updateTimer, 1000);
+
+      return () => clearInterval(timerInterval);
+    }
+  }, [timer]);
 
   const formatTime = (milliseconds: number): string => {
     const totalSeconds = Math.floor(milliseconds / 1000);
@@ -54,13 +78,13 @@ const Banner = (props: Props) => {
       <Box sx={styles.bannerWrapper}>
         <Box
           component="img"
-          src="https://png.pngtree.com/background/20210706/original/pngtree-dynamic-red-background-picture-image_149101.jpg"
+          src={bannerImage || "default-image-url.jpg"} // Fallback image URL if bannerImage is not available
           alt="banner"
           sx={styles.banner}
         />
         <Box sx={styles.desc}>
           <Box sx={styles.timer}> {formatTime(timeLeft)}</Box>
-          <Typography sx={styles.decs}>Banner Description</Typography>
+          <Typography sx={styles.descText}>{bannerDescription}</Typography>
         </Box>
       </Box>
     </Box>
@@ -82,13 +106,14 @@ const useStyle = () =>
       top: "50%",
       left: "50%",
       transform: "translate(-50%, -50%)",
+      textAlign: "center",
     },
     timer: {
       color: "white",
       fontSize: "42px",
       fontWeight: "bold",
     },
-    decs: {
+    descText: {
       fontSize: "18px",
       color: "grey",
     },

@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
+import "react-datetime-picker/dist/DateTimePicker.css";
+import "react-calendar/dist/Calendar.css";
+import "react-clock/dist/Clock.css";
 import {
   Box,
   Button,
@@ -11,16 +14,16 @@ import {
   FormHelperText,
   OutlinedInput,
 } from "@mui/material";
-import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
-import dayjs, { Dayjs } from "dayjs";
+import { DateTimePicker } from "react-datetime-picker";
 import { validationSchema } from "../utils/yup";
 import { createStyles } from "@mui/styles";
+import axios from "axios";
 
 interface BannerFormData {
   bannerImage: FileList;
   bannerDescription: string;
   bannerLink: string;
-  timer: any;
+  timer: Date | null;
   showBanner: boolean;
 }
 
@@ -40,28 +43,68 @@ const Sidebar = (props: Props) => {
     control,
     formState: { errors },
     setValue,
+    reset,
   } = useForm<BannerFormData>({
     //@ts-ignore
     resolver: yupResolver(validationSchema),
     defaultValues: {
-      timer: dayjs(),
+      timer: new Date(),
       showBanner: false,
     },
   });
 
-  const onSubmit = (data: BannerFormData) => {
-    console.log("Form Data:", data);
+  const onSubmit = async (data: BannerFormData) => {
+    try {
+      const formData = new FormData();
+      //@ts-ignore
+      formData.append("image", data.bannerImage);
+      formData.append("description", data.bannerDescription);
+      formData.append("link", data.bannerLink);
+      formData.append("duration", data.timer?.toISOString() || "");
+      formData.forEach((value, key) => {
+        console.log(`${key}:`, value);
+      });
+
+      // Make the API call
+      const response = await axios.post(
+        "https://f1c8-2401-4900-5990-7076-80a7-ca26-430e-19c4.ngrok-free.app/api/",
+        formData,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log("API Response:", response.data);
+      reset();
+    } catch (error) {
+      console.error("Error submitting form:", error);
+    }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setValue("bannerImage", e.target.files as FileList);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setBannerPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await axios.post(
+          "https://f1c8-2401-4900-5990-7076-80a7-ca26-430e-19c4.ngrok-free.app/api/upload",
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+        const { url } = response.data;
+        setBannerPreview(url);
+        setValue("bannerImage", url);
+      } catch (error) {
+        console.error("Error uploading image:", error);
+      }
     }
   };
 
@@ -147,26 +190,26 @@ const Sidebar = (props: Props) => {
           />
         </FormControl>
 
-        {/* <FormControl fullWidth margin="normal">
-                    <Controller
-                        name="timer"
-                        control={control}
-                        render={({ field }) => (
-                            <DateTimePicker
-                                label="Timer"
-                                value={field.value}
-                                onChange={(newValue) => field.onChange(newValue)}
-                                renderInput={(params: any) => (
-                                    <TextField
-                                        {...params}
-                                        error={!!errors.timer}
-                                        helperText={errors.timer?.message}
-                                    />
-                                )}
-                            />
-                        )}
-                    />
-                </FormControl> */}
+        <FormControl fullWidth margin="normal">
+          <Controller
+            name="timer"
+            control={control}
+            render={({ field }) => (
+              <DateTimePicker
+                onChange={field.onChange}
+                value={field.value || null}
+                //@ts-ignore
+                // renderInput={(params) => (
+                //   <TextField
+                //     {...params}
+                //     error={!!errors.timer}
+                //     helperText={errors.timer?.message}
+                //   />
+                // )}
+              />
+            )}
+          />
+        </FormControl>
 
         <Box mt={2}>
           <Button variant="contained" color="primary" type="submit">

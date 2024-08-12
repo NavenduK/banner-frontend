@@ -1,5 +1,4 @@
 import * as yup from 'yup';
-import dayjs, { Dayjs } from 'dayjs';
 
 export const validationSchema = yup.object().shape({
     bannerImage: yup.mixed().required('Banner Image is required'),
@@ -13,7 +12,7 @@ export const validationSchema = yup.object().shape({
         .test(
             'is-valid-date',
             'Timer is required',
-            (value: any) => value instanceof Dayjs || dayjs(value).isValid()
+            (value: any) => value instanceof Date && !isNaN(value.getTime())
         )
         .required('Timer is required'),
     showBanner: yup.boolean().required('Toggle is required'),
